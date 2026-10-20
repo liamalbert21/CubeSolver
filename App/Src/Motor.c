@@ -2,23 +2,34 @@
 #include "tim.h"
 
 #include "FSM.h"
+#include "Symbols.h"
 
 #include <limits.h>
 
+// The step factor--configure this here and on the stepper drivers
 #define MOTOR_STEP_FACTOR        4
 #define MOTOR_BASE_STEPS_PER_REV (MOTOR_STEP_FACTOR * 200)
 
+// "Returns" the PWM channel that controls a motor
 #define Motor_getPWMChannel(side) \
     (side < MOTOR_COUNT_PER_PWM ? MOTOR_CHANNEL_PWM1 : MOTOR_CHANNEL_PWM2)
 
+// This is not clean nor scalable. I have to hardcode the individual step counts as
+// variables, yet I give the motor queue a nominal size.
 int pwm1_target_step_count = INT_MAX;
-static Motor *motor_pwm1 = NULL;
-
 int pwm2_target_step_count = INT_MAX;
-static Motor *motor_pwm2 = NULL;
+static Motor *motor_queue[MAX_MOTORS_IN_PARALLEL];
 
+// This is a bad location. As I expand the program, I will move it elsewhere
+bool action_pending = false;
+
+// Returns the pinout configuration that corresponds to a motor
 static Pinout Motor_getSleepPinout(MotorSide side);
+
+// Readies a motor for rotation
 static int Motor_ready(Motor *motor, MotorPWMConfig pwm_config);
+
+// Deactivates a motor
 static void Motor_deactivate(MotorPWMChannel ch);
 
 // Callback for when a motor completes its rotation
@@ -83,18 +94,6 @@ void Motor_setDirection(Motor *motor, MotorDir dir)
     }
 }
 
-void Motor_enqueue(Motor *motor)
-{
-    if (Motor_getPWMChannel(motor->config.side) == MOTOR_CHANNEL_PWM1)
-    {
-        motor_pwm1 = motor;
-    }
-    else
-    {
-        motor_pwm2 = motor;
-    }
-}
-
 void Motor_rotate(Motor *motor, MotorPWMConfig pwm_config)
 {
     int load_value = Motor_ready(motor, pwm_config);
@@ -104,22 +103,15 @@ void Motor_rotate(Motor *motor, MotorPWMConfig pwm_config)
     TIM_generatePWM(timer, load_value);
 }
 
-void Motor_rotatePair(MotorPWMConfig pwm1_config, MotorPWMConfig pwm2_config)
-{
-    int lv_pwm1 = Motor_ready(motor_pwm1, pwm1_config);
-    int lv_pwm2 = Motor_ready(motor_pwm2, pwm2_config);
-
-    TIM_generatePWM(TIM3, lv_pwm1);
-    TIM_generatePWM(TIM4, lv_pwm2);
-}
-
 int Motor_ready(Motor *motor, MotorPWMConfig pwm_config)
 {
     int tsc = MOTOR_BASE_STEPS_PER_REV * pwm_config.degrees / DEGREES_FULL_ROTATION;
     uint32_t load_value =
         ((CLOCK_FREQ / MS_FACTOR * pwm_config.time_ms) / tsc) / (TIM3_PRESCALER + 1) - 1;
 
-    if (Motor_getPWMChannel(motor->config.side) == MOTOR_CHANNEL_PWM1)
+    MotorPWMChannel channel = Motor_getPWMChannel(motor->config.side);
+
+    if (channel == MOTOR_CHANNEL_PWM1)
     {
         pwm1_target_step_count = tsc;
     }
@@ -128,8 +120,9 @@ int Motor_ready(Motor *motor, MotorPWMConfig pwm_config)
         pwm2_target_step_count = tsc;
     }
 
-    Motor_awake(motor);
+    motor_queue[channel] = motor;
     Motor_setDirection(motor, motor->config.dir);
+    Motor_awake(motor);
 
     return load_value;
 }
@@ -141,10 +134,42 @@ void Motor_setCallback(FSM state)
 
 void Motor_deactivate(MotorPWMChannel ch)
 {
-    Motor_sleep(
-        ch == MOTOR_CHANNEL_PWM1 ?
-            motor_pwm1 : motor_pwm2
-    );
+    // Not addressasble, so it must be wrapped here
+    Motor_sleep(motor_queue[ch]);
+    
+    // Send "complete" indication to interface
+}
+
+MotorSide Motor_symbolToSide(char symbol)
+{
+    switch (symbol)
+    {
+        case SYMBOL_MOTOR_SIDE_RED:
+            return MOTOR_SIDE_RED;
+        case SYMBOL_MOTOR_SIDE_ORANGE:
+            return MOTOR_SIDE_ORANGE;
+        case SYMBOL_MOTOR_SIDE_YELLOW:
+            return MOTOR_SIDE_YELLOW;
+        case SYMBOL_MOTOR_SIDE_GREEN:
+            return MOTOR_SIDE_GREEN;
+        case SYMBOL_MOTOR_SIDE_BLUE:
+            return MOTOR_SIDE_BLUE;
+        case SYMBOL_MOTOR_SIDE_WHITE:
+            return MOTOR_SIDE_WHITE;
+        default:
+            return MOTOR_NUM_SIDES;
+    }
+}
+
+MotorDir Motor_symbolToDir(char symbol)
+{
+    switch (symbol)
+    {
+        case SYMBOL_DIR_COUNTERCLOCKWISE:
+            return MOTOR_DIR_CCW;
+        default:
+            return MOTOR_DIR_CW;
+    }
 }
 
 Pinout Motor_getSleepPinout(MotorSide side)

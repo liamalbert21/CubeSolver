@@ -7,7 +7,8 @@
 #define BAUD_RATE 115200
 
 RingBuffer tx_buffer = RingBuffer_init();
-volatile int tx_complete = 1;
+RingBuffer rx_buffer = RingBuffer_init();
+volatile bool tx_complete = false;
 
 static void USART2_initPins();
 
@@ -81,6 +82,7 @@ bool USART2_transmit(const char* message)
     return false;
   }
 
+  tx_complete = false;
   LL_USART_EnableIT_TXE(USART2);
   return true;
 }

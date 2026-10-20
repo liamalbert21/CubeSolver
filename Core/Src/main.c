@@ -25,7 +25,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "Motor.h"
+#include "Application.h"
+#include "Instructions.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -66,26 +67,11 @@ void SystemClock_Config(void);
   */
 int main(void)
 {
-
-  /* USER CODE BEGIN 1 */
-
-  /* USER CODE END 1 */
-
-  /* MCU Configuration--------------------------------------------------------*/
-
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
 
-  /* USER CODE BEGIN Init */
-
-  /* USER CODE END Init */
-
   /* Configure the system clock */
   SystemClock_Config();
-
-  /* USER CODE BEGIN SysInit */
-
-  /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
@@ -93,41 +79,33 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM4_Init();
   MX_USART2_UART_Init();
-  
-  /* USER CODE BEGIN 2 */
 
   // Testing UART transmission
   const char *message = "Hello, world!\n\r";
   USART2_transmit(message);
 
   // Testing parallel motor functionality
-  Motor motors[MOTOR_NUM_SIDES];
-  for (int i = 0; i < MOTOR_NUM_SIDES; ++i)
+  Application app = Application_init();
+
+  MotorPWMConfig pwm_config = (MotorPWMConfig){
+    DEGREES_HALF_ROTATION, MS_FACTOR / 4
+  };
+  Motor_rotate(&app.hal.motors[MOTOR_SIDE_RED], pwm_config);
+
+  pwm_config.degrees = DEGREES_FULL_ROTATION;
+  Motor_rotate(&app.hal.motors[MOTOR_SIDE_RED], pwm_config);
+
+  extern bool action_pending;
+  extern RingBuffer rx_buffer;
+
+  // Instruction interpretation loop
+  while (true)
   {
-    MotorConfig config = { (MotorSide)i, MOTOR_DIR_CW };
-    Motor_init(&motors[i], &config);
+    if (action_pending)
+    {
+      Instruction_interpret(&rx_buffer, app.hal.motors);
+    }
   }
-  Motor_initPins(motors);
-
-  Motor_enqueue(&motors[MOTOR_SIDE_RED]);
-  Motor_enqueue(&motors[MOTOR_SIDE_ORANGE]);
-
-  Motor_rotatePair(
-    (MotorPWMConfig){ DEGREES_HALF_ROTATION, MS_FACTOR / 4 },
-    (MotorPWMConfig){ DEGREES_FULL_ROTATION, MS_FACTOR / 4 }
-  );
-
-  /* USER CODE END 2 */
-
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-    /* USER CODE END WHILE */
-
-    /* USER CODE BEGIN 3 */
-  }
-  /* USER CODE END 3 */
 }
 
 /**

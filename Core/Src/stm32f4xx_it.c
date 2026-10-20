@@ -24,6 +24,7 @@
 /* USER CODE BEGIN Includes */
 #include "Motor.h"
 #include "Instructions.h"
+#include "Symbols.h"
 #include "RingBuffer.h"
 #include "stm32f446xx.h"
 /* USER CODE END Includes */
@@ -231,7 +232,7 @@ void TIM3_IRQHandler(void)
     LL_TIM_DisableCounter(TIM3);
 
     // Eventually, I will replace this with a generic callback function that
-    // gets set according to the occassion. Right now, this suffices because
+    // is set according to the occassion. Right now, this suffices because
     // I've only worked out the motor logic...
     Motor_callback(MOTOR_CHANNEL_PWM1);
   }
@@ -259,18 +260,17 @@ void TIM4_IRQHandler(void)
   */
 void USART2_IRQHandler(void)
 {
-  extern volatile int tx_complete;
-  extern RingBuffer tx_buffer;
-  static RingBuffer rx_buffer = RingBuffer_init();
-
   if (LL_USART_IsEnabledIT_TXE(USART2))
   {
+    extern RingBuffer tx_buffer;
+
     LL_USART_TransmitData8(
       USART2,
       RingBuffer_peek(&tx_buffer)
     );
     RingBuffer_pop(&tx_buffer);
 
+    // Wait for final transmission to complete
     if (RingBuffer_isEmpty(&tx_buffer))
     {
       LL_USART_DisableIT_TXE(USART2);
@@ -282,24 +282,33 @@ void USART2_IRQHandler(void)
     LL_USART_IsActiveFlag_TC(USART2))
   {
     LL_USART_DisableIT_TC(USART2);
-    tx_complete = 1;
+
+    extern volatile bool tx_complete;
+    tx_complete = true;
   }
 
   if (LL_USART_IsActiveFlag_RXNE(USART2))
   {
+    extern RingBuffer rx_buffer;
+
     RingBuffer_push(
       &rx_buffer,
       LL_USART_ReceiveData8(USART2)
     );
+    
     size_t length = RingBuffer_size(&rx_buffer);
-
-    // Change this eventually to a callback...
-    if (length == SINGLE_COMMAND_LENGTH || length == PARALLEL_COMMAND_LENGTH)
-    {
-      Instruction_interpret(&rx_buffer);
-    }
+    bool single_complete =
+      (RingBuffer_peek(&rx_buffer) == SYMBOL_INSTR_SINGULAR &&
+      length == SINGLE_COMMAND_LENGTH);
+    bool parallel_complete = (length == PARALLEL_COMMAND_LENGTH);
 
     LL_USART_ClearFlag_RXNE(USART2);
+
+    if (single_complete || parallel_complete)
+    {
+      extern bool action_pending;
+      action_pending = true;
+    }
   }
 }
 
