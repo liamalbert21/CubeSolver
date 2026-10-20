@@ -3,22 +3,21 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 #define MAX_RING_BUFFER_SIZE 16
 
-typedef struct
+typedef struct RingBuffer
 {
     uint8_t content[MAX_RING_BUFFER_SIZE];
-    volatile uint8_t head;
-    volatile uint8_t tail;
+    volatile int head;
+    volatile int tail;
 } RingBuffer;
-
-extern RingBuffer rx_buffer;
 
 #define RingBuffer_init() \
     ((RingBuffer){ {}, 0, 0 })
 
-bool RingBuffer_fill(RingBuffer *rb, int *start, const char *content);
+bool RingBuffer_fill(RingBuffer *rb, const char *content);
 
 bool RingBuffer_push(RingBuffer *rb, uint8_t element);
 
@@ -29,5 +28,7 @@ uint8_t RingBuffer_peek(RingBuffer *rb);
 bool RingBuffer_isEmpty(RingBuffer *rb);
 
 bool RingBuffer_isFull(RingBuffer *rb);
+
+size_t RingBuffer_size(RingBuffer *rb);
 
 #endif

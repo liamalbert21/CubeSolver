@@ -1,14 +1,12 @@
 #include "usart.h"
 
 #include "RingBuffer.h"
-#include "Buffer.h"
 
 #include <string.h>
 
 #define BAUD_RATE 115200
 
-RingBuffer rx_buffer = RingBuffer_init();
-Buffer tx_buffer = Buffer_init();
+RingBuffer tx_buffer = RingBuffer_init();
 volatile int tx_complete = 1;
 
 static void USART2_initPins();
@@ -75,17 +73,14 @@ void USART2_initPins()
   LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 }
 
-int USART2_transmit(const char* message)
-{
-  if (message == NULL || !tx_complete)
+bool USART2_transmit(const char* message)
+{ 
+  if (message == NULL || !tx_complete ||
+    !RingBuffer_fill(&tx_buffer, message))
   {
-    return 0;
+    return false;
   }
 
-  tx_buffer.content = (const uint8_t*)message;
-  tx_buffer.size = strlen(message);
-  tx_buffer.pos = 0;
-
   LL_USART_EnableIT_TXE(USART2);
-  return 1;
+  return true;
 }

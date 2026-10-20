@@ -22,14 +22,15 @@
 #include "stm32f4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "Motor.h"
+#include "Instructions.h"
 #include "RingBuffer.h"
-#include "Buffer.h"
 #include "stm32f446xx.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN TD */
-#include "Motor.h"
+
 /* USER CODE END TD */
 
 /* Private define ------------------------------------------------------------*/
@@ -259,11 +260,18 @@ void TIM4_IRQHandler(void)
 void USART2_IRQHandler(void)
 {
   extern volatile int tx_complete;
+  extern RingBuffer tx_buffer;
+  static RingBuffer rx_buffer = RingBuffer_init();
 
   if (LL_USART_IsEnabledIT_TXE(USART2))
   {
-    LL_USART_TransmitData8(USART2, tx_buffer.content[tx_buffer.pos++]);
-    if (tx_buffer.pos >= tx_buffer.size)
+    LL_USART_TransmitData8(
+      USART2,
+      RingBuffer_peek(&tx_buffer)
+    );
+    RingBuffer_pop(&tx_buffer);
+
+    if (RingBuffer_isEmpty(&tx_buffer))
     {
       LL_USART_DisableIT_TXE(USART2);
       LL_USART_EnableIT_TC(USART2);
@@ -283,6 +291,15 @@ void USART2_IRQHandler(void)
       &rx_buffer,
       LL_USART_ReceiveData8(USART2)
     );
+    size_t length = RingBuffer_size(&rx_buffer);
+
+    // Change this eventually to a callback...
+    if (length == SINGLE_COMMAND_LENGTH || length == PARALLEL_COMMAND_LENGTH)
+    {
+      Instruction_interpret(&rx_buffer);
+    }
+
+    LL_USART_ClearFlag_RXNE(USART2);
   }
 }
 

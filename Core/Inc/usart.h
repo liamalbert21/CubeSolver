@@ -29,7 +29,7 @@ extern "C" {
 #include "main.h"
 
 /* USER CODE BEGIN Includes */
-
+#include <stdbool.h>
 /* USER CODE END Includes */
 
 /* USER CODE BEGIN Private defines */
@@ -39,7 +39,7 @@ extern "C" {
 void MX_USART2_UART_Init(void);
 
 /* USER CODE BEGIN Prototypes */
-int USART2_transmit(const char* message);
+bool USART2_transmit(const char* message);
 void USART2_receiveHandler();
 /* USER CODE END Prototypes */
 

@@ -39,6 +39,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/App/Src/Application.c
     ${CMAKE_SOURCE_DIR}/App/Src/Motor.c
     ${CMAKE_SOURCE_DIR}/App/Src/RingBuffer.c
+    ${CMAKE_SOURCE_DIR}/App/Src/Instructions.c
 )
 
 # Add include paths
