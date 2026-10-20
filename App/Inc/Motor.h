@@ -2,32 +2,33 @@
 #define MOTOR_H
 
 #include "MotorDefs.h"
-
-#define MOTOR_COUNT_PER_PWM MOTOR_NUM_SIDES / 2
+#include "Pinout.h"
 
 typedef struct
 {
     MotorConfig config;
     MotorStatus status;
-    MotorPinout pinout;
+    Pinout sleep_pinout;
 } Motor;
 
-typedef enum FSM FSM;
+enum FSM;
 
 #define DEGREES_FULL_ROTATION    360
 #define DEGREES_HALF_ROTATION    (DEGREES_FULL_ROTATION / 2)
 #define DEGREES_QUARTER_ROTATION (DEGREES_HALF_ROTATION / 2)
 
+#define MOTOR_COUNT_PER_PWM MOTOR_NUM_SIDES / 2
+
 #define Motor_awake(motor) \
     LL_GPIO_SetOutputPin( \
-        (motor)->pinout.sleep.port, \
-        (motor)->pinout.sleep.pin_mask \
+        (motor)->sleep_pinout.port, \
+        (motor)->sleep_pinout.pin_mask \
     );
 
 #define Motor_sleep(motor) \
     LL_GPIO_ResetOutputPin( \
-        (motor)->pinout.sleep.port, \
-        (motor)->pinout.sleep.pin_mask \
+        (motor)->sleep_pinout.port, \
+        (motor)->sleep_pinout.pin_mask \
     );
 
 // Initializes a single motor
@@ -46,7 +47,7 @@ void Motor_rotate(Motor *motor, MotorPWMConfig pwm_config);
 void Motor_enqueue(Motor *motor);
 
 // Sets the rotation callback function
-void Motor_setCallback(FSM state);
+void Motor_setCallback(enum FSM state);
 
 // Rotates a pair of motors
 void Motor_rotatePair(MotorPWMConfig pwm1_config, MotorPWMConfig pwm2_config);

@@ -279,9 +279,10 @@ void USART2_IRQHandler(void)
 
   if (LL_USART_IsActiveFlag_RXNE(USART2))
   {
-    uint8_t data = LL_USART_ReceiveData8(USART2);
-    LL_USART_TransmitData8(USART2, data);
-    RingBuffer_push(&rx_buffer, data);
+    RingBuffer_push(
+      &rx_buffer,
+      LL_USART_ReceiveData8(USART2)
+    );
   }
 }
 

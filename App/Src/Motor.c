@@ -8,13 +8,16 @@
 #define MOTOR_STEP_FACTOR        4
 #define MOTOR_BASE_STEPS_PER_REV (MOTOR_STEP_FACTOR * 200)
 
+#define Motor_getPWMChannel(side) \
+    (side < MOTOR_COUNT_PER_PWM ? MOTOR_CHANNEL_PWM1 : MOTOR_CHANNEL_PWM2)
+
 int pwm1_target_step_count = INT_MAX;
 static Motor *motor_pwm1 = NULL;
 
 int pwm2_target_step_count = INT_MAX;
 static Motor *motor_pwm2 = NULL;
 
-static MotorPinout Motor_getPinout(MotorSide side);
+static Pinout Motor_getSleepPinout(MotorSide side);
 static int Motor_ready(Motor *motor, MotorPWMConfig pwm_config);
 static void Motor_deactivate(MotorPWMChannel ch);
 
@@ -25,7 +28,7 @@ void (*Motor_callback)(MotorPWMChannel) = Motor_deactivate;
 void Motor_init(Motor *motor, const MotorConfig *config)
 {
     motor->config = *config;
-    motor->pinout = Motor_getPinout(config->side);
+    motor->sleep_pinout = Motor_getSleepPinout(config->side);
 }
 
 void Motor_initPins(Motor motors[])
@@ -44,77 +47,45 @@ void Motor_initPins(Motor motors[])
 
     for (int i = 0; i < MOTOR_NUM_SIDES; ++i)
     {
-        GPIO_InitStruct.Pin = motors[i].pinout.sleep.pin_mask;
-        LL_GPIO_Init(motors[i].pinout.sleep.port, &GPIO_InitStruct);
-
-        GPIO_InitStruct.Pin = motors[i].pinout.dir.pin_mask;
-        LL_GPIO_Init(motors[i].pinout.dir.port, &GPIO_InitStruct);
+        GPIO_InitStruct.Pin = motors[i].sleep_pinout.pin_mask;
+        LL_GPIO_Init(motors[i].sleep_pinout.port, &GPIO_InitStruct);
     }
+
+    GPIO_InitStruct.Pin = MOTOR_PWM1_DIR_PIN;
+    LL_GPIO_Init(MOTOR_PWM1_DIR_PORT, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = MOTOR_PWM2_DIR_PIN;
+    LL_GPIO_Init(MOTOR_PWM2_DIR_PORT, &GPIO_InitStruct);
 }
 
 void Motor_setDirection(Motor *motor, MotorDir dir)
 {
     motor->config.dir = dir;
+    Pinout dir_pinout = Motor_getPWMChannel(motor->config.side) == MOTOR_CHANNEL_PWM1 ? 
+        (Pinout){ MOTOR_PWM1_DIR_PORT, MOTOR_PWM1_DIR_PIN } :
+        (Pinout){ MOTOR_PWM2_DIR_PORT, MOTOR_PWM2_DIR_PIN };
+
     switch (dir)
     {
         case MOTOR_DIR_CCW:
             LL_GPIO_ResetOutputPin(
-                motor->pinout.dir.port,
-                motor->pinout.dir.pin_mask
+                dir_pinout.port,
+                dir_pinout.pin_mask
             );
             break;
         
         // Accounts for clockwise turns & half rotations
         default:
             LL_GPIO_SetOutputPin(
-                motor->pinout.dir.port,
-                motor->pinout.dir.pin_mask
+                dir_pinout.port,
+                dir_pinout.pin_mask
             );
-    }
-}
-
-MotorPinout Motor_getPinout(MotorSide side)
-{   
-    switch (side)
-    {
-        case MOTOR_SIDE_RED:
-            return (MotorPinout){
-                { RED_SLEEP_PINOUT },
-                { RED_DIR_PINOUT }
-            };
-        case MOTOR_SIDE_ORANGE:
-            return (MotorPinout){ 
-                { ORANGE_SLEEP_PINOUT },
-                { ORANGE_DIR_PINOUT }
-            };
-        case MOTOR_SIDE_YELLOW:
-            return (MotorPinout){
-                { YELLOW_SLEEP_PINOUT },
-                { YELLOW_DIR_PINOUT }
-            };
-        case MOTOR_SIDE_GREEN:
-            return (MotorPinout){
-                { GREEN_SLEEP_PINOUT },
-                { GREEN_DIR_PINOUT }
-            };
-        case MOTOR_SIDE_BLUE:
-            return (MotorPinout){
-                { BLUE_SLEEP_PINOUT },
-                { BLUE_DIR_PINOUT },
-            };
-        case MOTOR_SIDE_WHITE:
-            return (MotorPinout){
-                { WHITE_SLEEP_PINOUT },
-                { WHITE_DIR_PINOUT }
-            };
-        default:
-            return (MotorPinout){};
     }
 }
 
 void Motor_enqueue(Motor *motor)
 {
-    if (motor->config.side < MOTOR_COUNT_PER_PWM)
+    if (Motor_getPWMChannel(motor->config.side) == MOTOR_CHANNEL_PWM1)
     {
         motor_pwm1 = motor;
     }
@@ -127,14 +98,10 @@ void Motor_enqueue(Motor *motor)
 void Motor_rotate(Motor *motor, MotorPWMConfig pwm_config)
 {
     int load_value = Motor_ready(motor, pwm_config);
-    if (motor->config.side < MOTOR_COUNT_PER_PWM)
-    {
-        TIM_generatePWM(TIM3, load_value);
-    }
-    else
-    {
-        TIM_generatePWM(TIM4, load_value);
-    }
+    TIM_TypeDef *timer =
+        (Motor_getPWMChannel(motor->config.side) == MOTOR_CHANNEL_PWM1) ?
+            TIM3 : TIM4;
+    TIM_generatePWM(timer, load_value);
 }
 
 void Motor_rotatePair(MotorPWMConfig pwm1_config, MotorPWMConfig pwm2_config)
@@ -152,7 +119,7 @@ int Motor_ready(Motor *motor, MotorPWMConfig pwm_config)
     uint32_t load_value =
         ((CLOCK_FREQ / MS_FACTOR * pwm_config.time_ms) / tsc) / (TIM3_PRESCALER + 1) - 1;
 
-    if (motor->config.side < MOTOR_COUNT_PER_PWM)
+    if (Motor_getPWMChannel(motor->config.side) == MOTOR_CHANNEL_PWM1)
     {
         pwm1_target_step_count = tsc;
     }
@@ -178,4 +145,37 @@ void Motor_deactivate(MotorPWMChannel ch)
         ch == MOTOR_CHANNEL_PWM1 ?
             motor_pwm1 : motor_pwm2
     );
+}
+
+Pinout Motor_getSleepPinout(MotorSide side)
+{   
+    switch (side)
+    {
+        case MOTOR_SIDE_RED:
+            return (Pinout){
+                RED_SLEEP_PINOUT
+            };
+        case MOTOR_SIDE_ORANGE:
+            return (Pinout){
+                ORANGE_SLEEP_PINOUT
+            };
+        case MOTOR_SIDE_YELLOW:
+            return (Pinout){
+                YELLOW_SLEEP_PINOUT
+            };
+        case MOTOR_SIDE_GREEN:
+            return (Pinout){
+                GREEN_SLEEP_PINOUT
+            };
+        case MOTOR_SIDE_BLUE:
+            return (Pinout){
+                BLUE_SLEEP_PINOUT
+            };
+        case MOTOR_SIDE_WHITE:
+            return (Pinout){
+                WHITE_SLEEP_PINOUT
+            };
+        default:
+            return (Pinout){};
+    }
 }
