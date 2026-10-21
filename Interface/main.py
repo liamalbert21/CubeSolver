@@ -64,7 +64,7 @@ class Command:
     # Determine whether the command's syntax is valid
     def __isValid(self):
         length = len(self.instructions)
-        count_sym = self.instructions[INSTR_COUNT_INDEX].upper()
+        count_sym = self.instructions[INSTR_COUNT_INDEX]
 
         # Check if the instruction type was properly specified
         if count_sym not in SYMBOL_INSTR_TYPES:
@@ -84,8 +84,8 @@ class Command:
 
         for i in range(INSTR_COUNT_INDEX + 1, length, 2):
             # Determine whether the face and direction instructions are valid
-            valid_face = self.instructions[i].upper() in SYMBOL_FACES
-            valid_dir = self.instructions[i + 1].upper() in SYMBOL_DIRECTIONS
+            valid_face = self.instructions[i] in SYMBOL_FACES
+            valid_dir = self.instructions[i + 1] in SYMBOL_DIRECTIONS
 
             if not valid_face or not valid_dir:
                 error_pos = i if not valid_face else i + 1
@@ -117,8 +117,8 @@ def transmitManual(target: serial.Serial):
     status = True
     while status:
         print(f"RX: {target.read_all()}")
-        cmd = Command(input("Enter command: ").replace(' ', ''), Command.DO_VALIDATE)
-        cmd_str = str(cmd).upper()
+        cmd = Command(input("Enter command: ").replace(' ', '').upper(), Command.DO_VALIDATE)
+        cmd_str = str(cmd)
 
         if cmd_str == Command.QUIT:
             status = False

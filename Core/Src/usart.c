@@ -76,12 +76,15 @@ void USART2_initPins()
 
 bool USART2_transmit(const char* message)
 { 
-  if (message == NULL || !tx_complete ||
+  static bool first_call = true;
+
+  if (message == NULL || (!first_call && !tx_complete) ||
     !RingBuffer_fill(&tx_buffer, message))
   {
     return false;
   }
 
+  first_call = false;
   tx_complete = false;
   LL_USART_EnableIT_TXE(USART2);
   return true;

@@ -3,6 +3,8 @@
 #include "RingBuffer.h"
 #include "Symbols.h"
 
+#include "tim.h"
+
 #define NUM_INSTRS_PER_MOTOR   2
 #define MS_QUARTER_ROTATION    1000
 
@@ -28,8 +30,8 @@ void Instruction_interpret(RingBuffer *rb, Motor motors[])
 
         // Symbol carries more infomration than the direction, so it's used instead
         MotorPWMConfig pwm_config = (sym_dir == SYMBOL_DIR_HALF_ROTATION) ?
-            (MotorPWMConfig){ DEGREES_HALF_ROTATION,    2 * MS_QUARTER_ROTATION } :
-            (MotorPWMConfig){ DEGREES_QUARTER_ROTATION, MS_QUARTER_ROTATION     };
+            (MotorPWMConfig){ DEGREES_HALF_ROTATION,    MS_QUARTER_ROTATION / 2 } :
+            (MotorPWMConfig){ DEGREES_QUARTER_ROTATION, MS_QUARTER_ROTATION / 4 };
         
         Motor_rotate(motor, pwm_config);
     }

@@ -235,6 +235,7 @@ void TIM3_IRQHandler(void)
     // is set according to the occassion. Right now, this suffices because
     // I've only worked out the motor logic...
     Motor_callback(MOTOR_CHANNEL_PWM1);
+    rollover_count = 0;
   }
 }
 
@@ -252,6 +253,7 @@ void TIM4_IRQHandler(void)
   {
     LL_TIM_DisableCounter(TIM4);
     Motor_callback(MOTOR_CHANNEL_PWM2);
+    rollover_count = 0;
   }
 }
 
@@ -302,10 +304,10 @@ void USART2_IRQHandler(void)
       length == SINGLE_COMMAND_LENGTH);
     bool parallel_complete = (length == PARALLEL_COMMAND_LENGTH);
 
-    LL_USART_ClearFlag_RXNE(USART2);
-
     if (single_complete || parallel_complete)
     {
+      // Change this as you use UART more
+      LL_USART_ClearFlag_RXNE(USART2);
       extern bool action_pending;
       action_pending = true;
     }

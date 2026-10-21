@@ -81,8 +81,8 @@ int main(void)
   MX_USART2_UART_Init();
 
   // Testing UART transmission
-  const char *message = "Hello, world!\n\r";
-  USART2_transmit(message);
+  // const char *message = "Hello, world!\n\r";
+  // USART2_transmit(message);
 
   // Testing parallel motor functionality
   Application app = Application_init();
@@ -93,12 +93,11 @@ int main(void)
   Motor_rotate(&app.hal.motors[MOTOR_SIDE_RED], pwm_config);
 
   pwm_config.degrees = DEGREES_FULL_ROTATION;
-  Motor_rotate(&app.hal.motors[MOTOR_SIDE_RED], pwm_config);
+  Motor_rotate(&app.hal.motors[MOTOR_SIDE_ORANGE], pwm_config);
 
   extern bool action_pending;
   extern RingBuffer rx_buffer;
 
-  // Instruction interpretation loop
   while (true)
   {
     if (action_pending)
