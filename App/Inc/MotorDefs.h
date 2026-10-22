@@ -4,14 +4,14 @@
 typedef enum
 {
     /* PWM1 */
-    MOTOR_SIDE_WHITE,
-    MOTOR_SIDE_ORANGE,
-    MOTOR_SIDE_GREEN,
-    
-    /* PWM2 */
-    MOTOR_SIDE_BLUE,
     MOTOR_SIDE_RED,
     MOTOR_SIDE_YELLOW,
+    MOTOR_SIDE_BLUE,
+    
+    /* PWM2 */
+    MOTOR_SIDE_ORANGE,
+    MOTOR_SIDE_GREEN,
+    MOTOR_SIDE_WHITE,
     
     MOTOR_NUM_SIDES
 } MotorSide;
@@ -28,12 +28,6 @@ typedef enum
     MOTOR_DIR_CW,
     MOTOR_DIR_CCW
 } MotorDir;
-
-typedef enum
-{
-    MOTOR_ON,
-    MOTOR_OFF
-} MotorStatus;
 
 typedef struct
 {

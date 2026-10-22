@@ -8,7 +8,6 @@
 typedef struct Motor
 {
     MotorConfig config;
-    MotorStatus status;
     Pinout sleep_pinout;
 } Motor;
 

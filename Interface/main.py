@@ -33,7 +33,8 @@ INSTR_PARALLEL = 'P'
 SYMBOL_INSTR_TYPES = (INSTR_SINGULAR, INSTR_PARALLEL)
 
 # Face specifiers
-SYMBOL_FACES = ('R', 'O', 'Y', 'G', 'B', 'W')
+SYMBOL_VALID_PARALLEL_PAIRS = (('B', 'G'), ('R', 'O'), ('Y', 'W'))
+SYMBOL_FACES_FLATTENED = ('R', 'O', 'Y', 'G', 'B', 'W')
 
 # Direction specifiers
 SYMBOL_DIRECTIONS = ('C', 'R', '2')
@@ -61,6 +62,13 @@ class Command:
         return (length == MIN_CMD_LENGTH and count_sym == INSTR_SINGULAR or
                 length == MAX_CMD_LENGTH and count_sym == INSTR_PARALLEL)
 
+    def __isValidParallel(self, motors: tuple):
+        assert len(motors) <= 2
+
+        return (motors in SYMBOL_VALID_PARALLEL_PAIRS or
+            motors[::-1] in SYMBOL_VALID_PARALLEL_PAIRS)
+
+
     # Determine whether the command's syntax is valid
     def __isValid(self):
         length = len(self.instructions)
@@ -82,9 +90,12 @@ class Command:
             )
             return False
 
-        for i in range(INSTR_COUNT_INDEX + 1, length, 2):
+        motors = []
+        for i in range(INSTR_COUNT_INDEX + 1, length, INSTR_PER_MOTOR):
+            face = self.instructions[i]
+
             # Determine whether the face and direction instructions are valid
-            valid_face = self.instructions[i] in SYMBOL_FACES
+            valid_face = face in SYMBOL_FACES_FLATTENED
             valid_dir = self.instructions[i + 1] in SYMBOL_DIRECTIONS
 
             if not valid_face or not valid_dir:
@@ -96,7 +107,16 @@ class Command:
                     f"{' ' * error_pos}| HERE"
                 )
                 return False
-        
+
+            motors.append(face)
+
+        if len(motors) == PARALLEL_MOTOR_COUNT and not self.__isValidParallel(tuple(motors)):
+            self.__hint = (
+                f"Must ensure faces turning in parallel are opposite to one another\n"
+                f"Valid pairs are: {SYMBOL_VALID_PARALLEL_PAIRS}"
+            )
+            return False
+
         return True
 
     # Transmit the command over UART
