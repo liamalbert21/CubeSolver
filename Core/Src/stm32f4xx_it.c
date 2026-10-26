@@ -227,13 +227,9 @@ void TIM3_IRQHandler(void)
 
   LL_TIM_ClearFlag_UPDATE(TIM3);
 
-  if (rollover_count++ == pwm1_target_step_count)
+  if (++rollover_count == pwm1_target_step_count)
   {
     LL_TIM_DisableCounter(TIM3);
-
-    // Eventually, I will replace this with a generic callback function that
-    // is set according to the occassion. Right now, this suffices because
-    // I've only worked out the motor logic...
     Motor_callback(MOTOR_CHANNEL_PWM1);
     rollover_count = 0;
   }
@@ -249,7 +245,7 @@ void TIM4_IRQHandler(void)
 
   LL_TIM_ClearFlag_UPDATE(TIM4);
 
-  if (rollover_count++ == pwm2_target_step_count)
+  if (++rollover_count == pwm2_target_step_count)
   {
     LL_TIM_DisableCounter(TIM4);
     Motor_callback(MOTOR_CHANNEL_PWM2);

@@ -24,7 +24,7 @@ static Motor *motor_queue[MAX_MOTORS_IN_PARALLEL];
 bool action_pending = false;
 
 // Returns the pinout configuration that corresponds to a motor
-static Pinout Motor_getSleepPinout(MotorSide side);
+static Pinout Motor_getEnablePinout(MotorSide side);
 
 // Readies a motor for rotation
 static int Motor_ready(Motor *motor, MotorPWMConfig pwm_config);
@@ -39,7 +39,7 @@ void (*Motor_callback)(MotorPWMChannel) = Motor_deactivate;
 void Motor_init(Motor *motor, const MotorConfig *config)
 {
     motor->config = *config;
-    motor->sleep_pinout = Motor_getSleepPinout(config->side);
+    motor->enable_pinout = Motor_getEnablePinout(config->side);
 }
 
 void Motor_initPins(Motor motors[])
@@ -58,8 +58,9 @@ void Motor_initPins(Motor motors[])
 
     for (int i = 0; i < MOTOR_NUM_SIDES; ++i)
     {
-        GPIO_InitStruct.Pin = motors[i].sleep_pinout.pin_mask;
-        LL_GPIO_Init(motors[i].sleep_pinout.port, &GPIO_InitStruct);
+        GPIO_InitStruct.Pin = motors[i].enable_pinout.pin_mask;
+        LL_GPIO_Init(motors[i].enable_pinout.port, &GPIO_InitStruct);
+        Motor_disable(&motors[i]);
     }
 
     GPIO_InitStruct.Pin = MOTOR_PWM1_DIR_PIN;
@@ -122,7 +123,9 @@ int Motor_ready(Motor *motor, MotorPWMConfig pwm_config)
 
     motor_queue[channel] = motor;
     Motor_setDirection(motor, motor->config.dir);
-    Motor_awake(motor);
+
+    // Waking up the motor ticks the spin
+    Motor_enable(motor);
 
     return load_value;
 }
@@ -135,7 +138,7 @@ void Motor_setCallback(FSM state)
 void Motor_deactivate(MotorPWMChannel ch)
 {
     // Not addressasble, so it must be wrapped here
-    Motor_sleep(motor_queue[ch]);
+    Motor_disable(motor_queue[ch]);
     
     // Send "complete" indication to interface
 }
@@ -172,33 +175,33 @@ MotorDir Motor_symbolToDir(char symbol)
     }
 }
 
-Pinout Motor_getSleepPinout(MotorSide side)
+Pinout Motor_getEnablePinout(MotorSide side)
 {   
     switch (side)
     {
         case MOTOR_SIDE_RED:
             return (Pinout){
-                RED_SLEEP_PINOUT
+                RED_ENABLE_PINOUT
             };
         case MOTOR_SIDE_ORANGE:
             return (Pinout){
-                ORANGE_SLEEP_PINOUT
+                ORANGE_ENABLE_PINOUT
             };
         case MOTOR_SIDE_YELLOW:
             return (Pinout){
-                YELLOW_SLEEP_PINOUT
+                YELLOW_ENABLE_PINOUT
             };
         case MOTOR_SIDE_GREEN:
             return (Pinout){
-                GREEN_SLEEP_PINOUT
+                GREEN_ENABLE_PINOUT
             };
         case MOTOR_SIDE_BLUE:
             return (Pinout){
-                BLUE_SLEEP_PINOUT
+                BLUE_ENABLE_PINOUT
             };
         case MOTOR_SIDE_WHITE:
             return (Pinout){
-                WHITE_SLEEP_PINOUT
+                WHITE_ENABLE_PINOUT
             };
         default:
             return (Pinout){};

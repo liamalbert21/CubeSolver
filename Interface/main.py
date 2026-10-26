@@ -140,14 +140,15 @@ def transmitManual(target: serial.Serial):
         cmd = Command(input("Enter command: ").replace(' ', '').upper(), Command.DO_VALIDATE)
         cmd_str = str(cmd)
 
-        if cmd_str == Command.QUIT:
+        if not cmd_str:
+            continue
+        elif cmd_str == Command.QUIT:
             status = False
         elif cmd_str == Command.CLEAR:
             # Clear the active shell
             subprocess.run("cls" if sys.platform == "win32" else "clear", shell=True)
         else:
             cmd.send(target)
-            pass
 
 
 def transmitAuto(target: serial.Serial):
