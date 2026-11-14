@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "cmsis_os.h"
 #include "dma.h"
 #include "tim.h"
 #include "usart.h"
@@ -52,6 +53,7 @@
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+void MX_FREERTOS_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -67,44 +69,50 @@ void SystemClock_Config(void);
   */
 int main(void)
 {
+
+  /* USER CODE BEGIN 1 */
+
+  /* USER CODE END 1 */
+
+  /* MCU Configuration--------------------------------------------------------*/
+
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
 
+  /* USER CODE BEGIN Init */
+
+  /* USER CODE END Init */
+
   /* Configure the system clock */
   SystemClock_Config();
+
+  /* USER CODE BEGIN SysInit */
+
+  /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_TIM3_Init();
-  MX_TIM4_Init();
   MX_USART2_UART_Init();
+  MX_TIM4_Init();
+  /* USER CODE BEGIN 2 */
 
-  // Testing UART transmission
-  // const char *message = "Hello, world!\n\r";
-  // USART2_transmit(message);
+  /* USER CODE END 2 */
 
-  // Testing parallel motor functionality
-  Application app = Application_init();
+  /* Init scheduler */
+  osKernelInitialize();  /* Call init function for freertos objects (in cmsis_os2.c) */
+  MX_FREERTOS_Init();
 
-  MotorPWMConfig pwm_config = (MotorPWMConfig){
-    DEGREES_HALF_ROTATION, MS_FACTOR / 4
-  };
-  Motor_rotate(&app.hal.motors[MOTOR_SIDE_RED], pwm_config);
+  /* Start scheduler */
+  osKernelStart();
 
-  pwm_config.degrees = DEGREES_FULL_ROTATION;
-  Motor_rotate(&app.hal.motors[MOTOR_SIDE_ORANGE], pwm_config);
+  // Code should never reach this point
+  while (true) {
 
-  extern bool action_pending;
-  extern RingBuffer rx_buffer;
-
-  while (true)
-  {
-    if (action_pending)
-    {
-      Instruction_interpret(&rx_buffer, app.hal.motors);
-    }
   }
+
+  return 0;
 }
 
 /**

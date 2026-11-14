@@ -13,7 +13,7 @@ void MX_TIM3_Init(void)
   NVIC_SetPriority(TIM3_IRQn,
     NVIC_EncodePriority(
       NVIC_GetPriorityGrouping(),
-      0,
+      5,
       0
     )
   );
@@ -75,7 +75,7 @@ void MX_TIM4_Init(void)
     TIM4_IRQn,
     NVIC_EncodePriority(
       NVIC_GetPriorityGrouping(),
-      0,
+      5,
       0
     )
   );
@@ -123,7 +123,6 @@ void TIM4_initPins()
   LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 }
 
-/* USER CODE BEGIN 1 */
 void TIM_generatePWM(TIM_TypeDef *timer, int load_value)
 {
   LL_TIM_SetAutoReload(timer, load_value);

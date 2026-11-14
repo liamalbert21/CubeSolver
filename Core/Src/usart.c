@@ -35,7 +35,7 @@ void MX_USART2_UART_Init(void)
   NVIC_SetPriority(USART2_IRQn,
     NVIC_EncodePriority(
       NVIC_GetPriorityGrouping(),
-      0, 
+      5, 
       0
     )
   );
